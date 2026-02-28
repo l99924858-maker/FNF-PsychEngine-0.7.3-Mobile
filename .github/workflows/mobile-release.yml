@@ -22,7 +22,7 @@ jobs:
         uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
-          java-version: '17'   # ← ИЗМЕНИЛ С 11 НА 17
+          java-version: '17'
           
       - name: Install Haxelibs
         run: |
@@ -36,15 +36,25 @@ jobs:
           haxelib install flixel-tools 1.5.1
           haxelib install actuate 1.9.0
           haxelib install extension-androidtools
+          
+      - name: Setup Lime
+        run: |
           haxelib run lime setup
           haxelib run lime setup flixel
+          echo "$HOME/haxelib/lime/8.1.2/run.n" >> $GITHUB_PATH
           
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        
+      - name: Verify Lime
+        run: |
+          haxelib list
+          which lime || echo "Lime not in PATH"
+          haxelib run lime --version
           
       - name: Build APK
         run: |
-          lime build android -final
+          haxelib run lime build android -final
           
       - name: Upload APK
         uses: actions/upload-artifact@v4
