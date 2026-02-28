@@ -1,51 +1,43 @@
-name: Mobile + Release
-on: workflow_dispatch
+name: Мобильный + Релиз
 
-permissions:
-  contents: write
-  discussions: write
-
-env:
-  PROJECT_NAME: PsychEngine
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
 
 jobs:
   build:
-    name: ${{ matrix.name }}
-    strategy:
-      matrix:
-        include:
-          - name: Android
-            os: macos-15
-            buildArgs: "android -final -D officialBuild"
-            artifactName: androidBuild
-            artifactPath: "export/release/android/bin/app/build/outputs/apk/release/*.apk"
-    uses: ./.github/workflows/build.yml
-    with:
-        name: ${{ matrix.name }}
-        os: ${{ matrix.os }}
-        buildArgs: ${{ matrix.buildArgs }}
-        artifactName: ${{ matrix.artifactName }}
-        artifactPath: ${{ matrix.artifactPath }}
-
-  Releaser:
-    needs: [build]
     runs-on: ubuntu-latest
-    permissions: write-all
+    
     steps:
-      - name: Download Android Build
-        uses: actions/download-artifact@main
+      - name: Checkout code
+        uses: actions/checkout@v2
+        
+      - name: Setup Haxe
+        uses: krdlab/setup-haxe@v1.2.0
         with:
-           name: androidBuild
-           path: /home/runner
-
-      - name: Move Android File
-        run: mv /home/runner/${{ env.PROJECT_NAME }}-release.apk /home/runner/${{ env.PROJECT_NAME }}-Android.apk
-
-      - name: Publish The Release
-        uses: softprops/action-gh-release@v2
+          haxe-version: 4.2.5
+          
+      - name: Install Libraries
+        run: |
+          haxelib install lime 8.1.2
+          haxelib install openfl 9.3.3
+          haxelib install flixel 5.5.0
+          haxelib install flixel-addons 3.2.2
+          haxelib install flixel-ui 2.5.0
+          haxelib install hscript 2.5.0
+          haxelib install flixel-tools 1.5.1
+          haxelib install actuate 1.9.0
+          haxelib install extension-androidtools
+          
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v2
+        
+      - name: Build APK
+        run: lime build android -final
+        
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
         with:
-          name: "0.7.3"
-          tag_name: "0.7.3"
-          prerelease: false
-          files: |
-            /home/runner/*.apk
+          name: PsychEngine-Android
+          path: export/release/android/bin/app/build/outputs/apk/debug/*.apk
