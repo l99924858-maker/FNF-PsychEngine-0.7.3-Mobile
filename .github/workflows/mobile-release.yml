@@ -1,66 +1,51 @@
-name: Мобильный + Релиз
+name: Mobile + Release
+on: workflow_dispatch
 
-on:
-  push:
-    branches: [ main, master ]
-  workflow_dispatch:
+permissions:
+  contents: write
+  discussions: write
+
+env:
+  PROJECT_NAME: PsychEngine
 
 jobs:
   build:
+    name: ${{ matrix.name }}
+    strategy:
+      matrix:
+        include:
+          - name: Android
+            os: macos-15
+            buildArgs: "android -final -D officialBuild"
+            artifactName: androidBuild
+            artifactPath: "export/release/android/bin/app/build/outputs/apk/release/*.apk"
+    uses: ./.github/workflows/build.yml
+    with:
+        name: ${{ matrix.name }}
+        os: ${{ matrix.os }}
+        buildArgs: ${{ matrix.buildArgs }}
+        artifactName: ${{ matrix.artifactName }}
+        artifactPath: ${{ matrix.artifactPath }}
+
+  Releaser:
+    needs: [build]
     runs-on: ubuntu-latest
-    
+    permissions: write-all
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-        
-      - name: Setup Haxe
-        uses: krdlab/setup-haxe@v1.2.0
+      - name: Download Android Build
+        uses: actions/download-artifact@main
         with:
-          haxe-version: 4.2.5
-          
-      - name: Setup Java
-        uses: actions/setup-java@v3
+           name: androidBuild
+           path: /home/runner
+
+      - name: Move Android File
+        run: mv /home/runner/${{ env.PROJECT_NAME }}-release.apk /home/runner/${{ env.PROJECT_NAME }}-Android.apk
+
+      - name: Publish The Release
+        uses: softprops/action-gh-release@v2
         with:
-          distribution: 'temurin'
-          java-version: '17'
-          
-      - name: Install Haxelibs
-        run: |
-          haxelib setup ~/haxelib
-          haxelib install lime 8.1.2
-          haxelib install openfl 9.3.3
-          haxelib install flixel 5.5.0
-          haxelib install flixel-addons 3.2.2
-          haxelib install flixel-ui 2.5.0
-          haxelib install hscript 2.5.0
-          haxelib install flixel-tools 1.5.1
-          haxelib install actuate 1.9.0
-          haxelib install extension-androidtools
-          
-      - name: Setup Lime
-        run: |
-          haxelib run lime setup
-          haxelib run lime setup flixel
-          echo "$HOME/haxelib/lime/8.1.2/run.n" >> $GITHUB_PATH
-          
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-        
-      - name: Verify Lime
-        run: |
-          haxelib list
-          which lime || echo "Lime not in PATH"
-          haxelib run lime --version
-          
-      - name: Build APK
-        run: |
-          haxelib run lime build android -final
-          
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: PsychEngine-Android
-          path: |
-            export/release/android/bin/*.apk
-            export/release/android/bin/app/build/outputs/apk/debug/*.apk
-          if-no-files-found: warn
+          name: "0.7.3"
+          tag_name: "0.7.3"
+          prerelease: false
+          files: |
+            /home/runner/*.apk
