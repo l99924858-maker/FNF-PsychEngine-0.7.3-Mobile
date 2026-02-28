@@ -11,15 +11,22 @@ jobs:
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         
       - name: Setup Haxe
         uses: krdlab/setup-haxe@v1.2.0
         with:
           haxe-version: 4.2.5
           
-      - name: Install Libraries
+      - name: Setup Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '11'
+          
+      - name: Install Haxelibs
         run: |
+          haxelib setup ~/haxelib
           haxelib install lime 8.1.2
           haxelib install openfl 9.3.3
           haxelib install flixel 5.5.0
@@ -29,15 +36,21 @@ jobs:
           haxelib install flixel-tools 1.5.1
           haxelib install actuate 1.9.0
           haxelib install extension-androidtools
+          haxelib run lime setup
+          haxelib run lime setup flixel
           
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v2
-        
+        uses: android-actions/setup-android@v3
+          
       - name: Build APK
-        run: lime build android -final
-        
+        run: |
+          lime build android -final
+          
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: PsychEngine-Android
-          path: export/release/android/bin/app/build/outputs/apk/debug/*.apk
+          path: |
+            export/release/android/bin/*.apk
+            export/release/android/bin/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: warn
